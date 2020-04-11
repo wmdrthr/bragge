@@ -11,6 +11,7 @@ itemadapter==0.1.0
 lxml==4.5.1
 parsel==1.6.0
 pendulum==2.1.0
+Pillow==7.2.0
 Protego==0.1.16
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
