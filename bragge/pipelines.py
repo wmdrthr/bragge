@@ -1,5 +1,8 @@
+import json
+from datetime import datetime
 
 import scrapy
+from sqlalchemy import create_engine, Table, MetaData
 
 class BraggeValidationPipeline():
 
@@ -31,3 +34,83 @@ class BraggeValidationPipeline():
                 item[key] = str(val)
             spider.logger.error(f'Dropping item: {json.dumps(item)}')
             raise scrapy.exceptions.DropItem(f'Validation Failure: {ae.args[0]}')
+
+class BraggePipeline():
+
+    def __init__(self, db_engine):
+
+        self.engine = db_engine
+        self._initialize_database(self.engine)
+
+    @classmethod
+    def from_crawler(cls, crawler):
+
+        engine = create_engine(crawler.settings.get('DATABASE_URL'))
+
+        return cls(
+            db_engine = engine
+        )
+
+    def _initialize_database(self, engine):
+
+        metadata = MetaData(bind=engine)
+
+        self.episodes = Table('episodes', metadata, autoload=True)
+        self.descriptions = Table('descriptions', metadata, autoload=True)
+        self.links = Table('links', metadata, autoload=True)
+        self.reading_lists = Table('reading_lists', metadata, autoload=True)
+
+        genres = Table('genres', metadata, autoload=True)
+        eras = Table('eras', metadata, autoload=True)
+
+        with engine.connect() as connection:
+
+            self.genres = {}
+            result = connection.execute(genres.select())
+            for row in result:
+                self.genres[row['genre']] = row['id']
+
+            self.eras = {}
+            result = connection.execute(eras.select())
+            for row in result:
+                self.eras[row['era']] = row['id']
+
+    def persist(self, item):
+
+        with self.engine.begin() as connection:
+
+            keys = ['slug', 'url', 'title', 'date', 'synopsis']
+            values = {'parsed_at': datetime.utcnow()}
+            for key in keys:
+                values[key] = item[key]
+            values['genre'] = self.genres[item['genre']]
+            values['era'] = self.eras[item['era']]
+
+            result = connection.execute(self.episodes.insert().values(**values))
+
+            episode_id = result.inserted_primary_key[0]
+
+            if len(item['description']) > 0:
+                description_values = [{'episodeid':episode_id, 'description': d} for d in item['description']]
+                connection.execute(self.descriptions.insert(), description_values)
+
+            if len(item['links']) > 0:
+                links_values = [{'episodeid':episode_id, 'link_text': lt} for lt in item['links']]
+                connection.execute(self.links.insert(), links_values)
+
+            if len(item['reading_list']) > 0:
+                reading_list_values = [{'episodeid':episode_id, 'rl_entry': rle} for rle in item['reading_list']]
+                connection.execute(self.links.insert(), reading_list_values)
+
+    def process_item(self, item, spider):
+
+        try:
+            self.persist(item)
+
+            return item
+        except:
+            for key,val in item.items():
+                item[key] = str(val)
+            spider.logger.error(f'Error while processing item: {json.dumps(item)}',
+                                exc_info=True)
+            raise

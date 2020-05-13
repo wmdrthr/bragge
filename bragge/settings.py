@@ -23,14 +23,17 @@ ITEM_PIPELINES = {
     'scrapy.pipelines.files.FilesPipeline': 10,
     'scrapy.pipelines.images.ImagesPipeline': 20,
     'bragge.pipelines.BraggeValidationPipeline': 100,
+    'bragge.pipelines.BraggePipeline': 200,
 }
 
 BASEDIR = os.getenv('BRAGGE_BASEDIR', '/tmp/bragge')
 
-FILES_STORE  = os.path.join(BASEDIR, 'files/audio/')
-IMAGES_STORE = os.path.join(BASEDIR, 'files/images/')
+FILES_STORE  = os.path.join(BASEDIR, 'download/audio/')
+IMAGES_STORE = os.path.join(BASEDIR, 'download/images/')
 IMAGES_THUMBS = { 'small': (128, 72) }
 
 HTTPCACHE_ENABLED = True
 HTTPCACHE_DIR = os.path.join(BASEDIR, 'httpcache')
 HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+DATABASE_URL = os.getenv('BRAGGE_DATABASE', f'sqlite:///{os.path.join(BASEDIR, "bragge.db")}')
