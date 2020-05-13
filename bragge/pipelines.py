@@ -6,7 +6,7 @@ class BraggeValidationPipeline():
     def process_item(self, item, spider):
 
         try:
-            for key in ('slug', 'url', 'title', 'synopsis'):
+            for key in ('slug', 'url', 'title', 'synopsis', 'genre', 'era'):
                 assert (key in item and len(item[key]) > 0), f'item does not have {key}'
 
             assert 'date' in item and item['date'] is not None, 'item does not have date'

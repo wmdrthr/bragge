@@ -6,6 +6,12 @@ import string
 import scrapy
 import pendulum
 
+GENRES = {'Culture', 'History', 'Philosophy', 'Religion', 'Science'}
+ERAS = {'Prehistoric', 'Mesopotamian', 'Ancient Egypt', 'Ancient Greece',
+        'Ancient Rome', 'Early Middle Ages', 'Medieval', 'Renaissance',
+        '16th Century', '17th Century', '18th Century', 'Enlightenment',
+        'Romantic', '19th Century', 'Victorian', '20th Century'}
+
 class Bragge(scrapy.Spider):
 
     name = 'bragge'
@@ -75,6 +81,14 @@ class Bragge(scrapy.Spider):
             for node in nodes[:-1]:
                 reading_list.append(node.get())
 
+        genre = era = None
+        featured_container = response.xpath('//a[@data-bbc-title="featured-in:group:title"]')
+        for collection in featured_container.xpath('span[@class="programme__title "]/span/text()').getall():
+            if collection in GENRES:
+                genre = collection
+            elif collection in ERAS:
+                era = collection
+
         yield { 'url': response.url,
                 'slug': slug,
                 'title': title,
@@ -83,6 +97,8 @@ class Bragge(scrapy.Spider):
                 'description': description,
                 'links': links,
                 'reading_list': reading_list,
+                'genre': genre,
+                'era': era,
                 'image_urls': [image_url],
                 'file_urls': file_urls}
 
