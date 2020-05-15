@@ -40,14 +40,16 @@ class BraggeValidationPipeline():
 
 class BraggePipeline():
 
-    def __init__(self, db_engine, basedir, files_store):
+    def __init__(self, db_engine, basedir, files_store, images_store):
 
         self.resources_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources')
 
         self.basedir = basedir
-        os.makedirs(os.path.join(self.basedir, 'files', 'audio'))
+        os.makedirs(os.path.join(self.basedir, 'files', 'audio'), exist_ok=True)
+        os.makedirs(os.path.join(self.basedir, 'files', 'images', 'thumbnails'), exist_ok=True)
 
         self.files_store = files_store
+        self.images_store = images_store
 
         self.engine = db_engine
         self._initialize_database(self.engine)
@@ -61,6 +63,7 @@ class BraggePipeline():
             db_engine = engine,
             basedir      = crawler.settings.get('BASEDIR'),
             files_store  = crawler.settings.get('FILES_STORE'),
+            images_store = crawler.settings.get('IMAGES_STORE'),
         )
 
     def _initialize_database(self, engine):
@@ -115,6 +118,16 @@ class BraggePipeline():
             spider.logger.error(f"Error while processing MP3 file: {item['files'][0]['path']}")
             raise
 
+    def process_image_files(self, item):
+
+        image_file_path = item['images'][0]['path']
+
+        image_file_local_path = os.path.join(self.images_store, image_file_path)
+        os.link(image_file_local_path, os.path.join(self.basedir, 'files', 'images', f'{item["slug"]}.jpg'))
+
+        thumbnail_local_path = os.path.join(self.images_store, 'thumbs', image_file_path.replace('full', 'small'))
+        os.link(thumbnail_local_path, os.path.join(self.basedir, 'files', 'images', 'thumbnails', f'{item["slug"]}.jpg'))
+
     def persist(self, item):
 
         with self.engine.begin() as connection:
@@ -146,6 +159,7 @@ class BraggePipeline():
 
         try:
             self.process_audio_file(item)
+            self.process_image_files(item)
             self.persist(item)
 
             return item
