@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 import string
 
 import scrapy
+from sqlalchemy import create_engine, Table, MetaData, select
 import pendulum
 
 GENRES = {'Culture', 'History', 'Philosophy', 'Religion', 'Science'}
@@ -15,7 +16,25 @@ ERAS = {'Prehistoric', 'Mesopotamian', 'Ancient Egypt', 'Ancient Greece',
 class Bragge(scrapy.Spider):
 
     name = 'bragge'
-    start_urls = ['https://www.bbc.co.uk/programmes/p0054578']
+    start_url = 'https://www.bbc.co.uk/programmes/p0054578'
+
+    def start_requests(self):
+
+        engine = create_engine(self.crawler.settings.get('DATABASE_URL'))
+        metadata = MetaData(bind=engine)
+        episodes = Table('episodes', metadata, autoload=True)
+
+        with engine.connect() as connection:
+            result = connection.execute(select([episodes.c.url]).
+                                        order_by(episodes.c.parsed_at.desc())
+                                        .limit(1))
+            row = result.first()
+            if row is not None:
+                self.logger.info(f'Resuming crawl from {row["url"]}')
+                return [scrapy.Request(row['url'], callback = self.parse_next)]
+            else:
+                self.logger.info(f'Starting crawl from {self.start_url}')
+                return [scrapy.Request(self.start_url, callback = self.parse)]
 
     def parse_next(self, response):
 
