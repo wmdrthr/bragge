@@ -1,8 +1,11 @@
+
+import os
 import json
 from datetime import datetime
 
 import scrapy
 from sqlalchemy import create_engine, Table, MetaData
+from mutagen import id3
 
 class BraggeValidationPipeline():
 
@@ -37,7 +40,14 @@ class BraggeValidationPipeline():
 
 class BraggePipeline():
 
-    def __init__(self, db_engine):
+    def __init__(self, db_engine, basedir, files_store):
+
+        self.resources_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources')
+
+        self.basedir = basedir
+        os.makedirs(os.path.join(self.basedir, 'files', 'audio'))
+
+        self.files_store = files_store
 
         self.engine = db_engine
         self._initialize_database(self.engine)
@@ -48,7 +58,9 @@ class BraggePipeline():
         engine = create_engine(crawler.settings.get('DATABASE_URL'))
 
         return cls(
-            db_engine = engine
+            db_engine = engine,
+            basedir      = crawler.settings.get('BASEDIR'),
+            files_store  = crawler.settings.get('FILES_STORE'),
         )
 
     def _initialize_database(self, engine):
@@ -74,6 +86,34 @@ class BraggePipeline():
             result = connection.execute(eras.select())
             for row in result:
                 self.eras[row['era']] = row['id']
+
+    def process_audio_file(self, item):
+
+        mp3file_path = os.path.join(self.files_store, item['files'][0]['path'])
+        os.link(mp3file_path, os.path.join(self.basedir, 'files', 'audio', f'{item["slug"]}.mp3'))
+
+        # Update MP3 tags
+        try:
+            mp3file = id3.ID3(mp3file_path)
+
+            mp3file.delall('USLT')
+            mp3file.setall('TIT2', [id3.TIT2(encoding = id3.Encoding.UTF8, text = item['title'])])
+            mp3file.setall('TDRC', [id3.TDOR(encoding = id3.Encoding.UTF8, text = item['date'].strftime('%Y-%m-%dT%H:%M:%S'))])
+            mp3file.setall('COMM', [id3.COMM(encoding = id3.Encoding.UTF8, lang='eng', text = item['synopsis'])])
+            mp3file.setall('TALB', [id3.TALB(encoding = id3.Encoding.UTF8, text = f'In Our Time Archive: {item["genre"]}')])
+            mp3file.setall('TLAN', [id3.TLAN(encoding = id3.Encoding.UTF8, text = 'eng')])
+            mp3file.setall('TCOP', [id3.TCOP(encoding = id3.Encoding.UTF8, text = f"{item['date'].year} BBC")])
+
+            with open(os.path.join(self.resources_dir, f"{item['genre']}.jpg"), 'rb') as albumart:
+                mp3file.setall('APIC', [id3.APIC(encoding = id3.Encoding.UTF8,
+                                                 mime = 'image/jpeg',
+                                                 type = id3.PictureType.COVER_FRONT,
+                                                 desc = 'Cover',
+                                                 data = albumart.read())])
+            mp3file.save()
+        except Exception as e:
+            spider.logger.error(f"Error while processing MP3 file: {item['files'][0]['path']}")
+            raise
 
     def persist(self, item):
 
@@ -105,6 +145,7 @@ class BraggePipeline():
     def process_item(self, item, spider):
 
         try:
+            self.process_audio_file(item)
             self.persist(item)
 
             return item
