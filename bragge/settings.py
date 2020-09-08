@@ -1,6 +1,7 @@
 # Scrapy settings for bragge project
 
-import os
+import os, sys
+import json
 
 BOT_NAME = 'bragge'
 SPIDER_MODULES = ['bragge.spiders']
@@ -37,3 +38,17 @@ HTTPCACHE_DIR = os.path.join(BASEDIR, 'httpcache')
 HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 DATABASE_URL = os.getenv('BRAGGE_DATABASE', f'sqlite:///{os.path.join(BASEDIR, "bragge.db")}')
+
+config_file = os.getenv('BRAGGE_CONFIG_FILE', os.path.join(BASEDIR, 'config'))
+if os.path.exists(config_file):
+    try:
+        with open(config_file, 'rb') as f:
+            config = json.loads(f.read())
+
+        for key, value in config.items():
+            globals()[key.upper()] = value
+    except Exception as e:
+        print(f'Invalid config file ({config_file}): {str(e)}')
+        sys.exit(5)
+
+
