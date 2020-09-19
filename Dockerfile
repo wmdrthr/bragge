@@ -13,7 +13,8 @@ COPY --from=build /venv /venv
 
 WORKDIR /app
 COPY bragge/ ./bragge
+COPY runner.py ./
 COPY scrapy.cfg ./
 
-CMD ["/venv/bin/scrapy", "crawl", "bragge"]
+CMD ["/venv/bin/python3", "runner.py"]
 

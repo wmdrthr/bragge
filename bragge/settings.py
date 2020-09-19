@@ -2,6 +2,7 @@
 
 import os, sys
 import json
+from datetime import datetime
 
 BOT_NAME = 'bragge'
 SPIDER_MODULES = ['bragge.spiders']
@@ -36,6 +37,9 @@ IMAGES_THUMBS = { 'small': (128, 72) }
 HTTPCACHE_ENABLED = True
 HTTPCACHE_DIR = os.path.join(BASEDIR, 'httpcache')
 HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+now = datetime.utcnow()
+LOG_FILE = os.path.join(BASEDIR, 'logs', now.strftime('bragge-%Y%m%d_%H%M%S.log'))
 
 DATABASE_URL = os.getenv('BRAGGE_DATABASE', f'sqlite:///{os.path.join(BASEDIR, "bragge.db")}')
 
