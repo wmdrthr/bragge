@@ -20,6 +20,9 @@ CLOSESPIDER_ERRORCOUNT = 1
 CLOSESPIDER_ITEMCOUNT = 3
 CONCURRENT_REQUESTS = 1
 
+DOWNLOADER_MIDDLEWARES = {
+    'bragge.middleware.FallbackDownloader': 999
+}
 
 ITEM_PIPELINES = {
     'scrapy.pipelines.files.FilesPipeline': 10,
