@@ -53,7 +53,11 @@ if os.path.exists(config_file):
             config = json.loads(f.read())
 
         for key, value in config.items():
-            globals()[key.upper()] = value
+            if key == 'overrides':
+                for k,v in value.items():
+                    globals()[k.upper()] = v
+            else:
+                globals()[key.upper()] = value
     except Exception as e:
         print(f'Invalid config file ({config_file}): {str(e)}')
         sys.exit(5)
