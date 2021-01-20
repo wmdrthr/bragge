@@ -12,7 +12,7 @@ idna==2.10
 incremental==17.5.0
 itemadapter==0.1.0
 jmespath==0.10.0
-lxml==4.5.1
+lxml==4.6.2
 mutagen==1.44.0
 parsel==1.6.0
 pendulum==2.1.0
